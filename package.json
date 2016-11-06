@@ -1,0 +1,22 @@
+{
+  "name": "rescue-robotics",
+  "version": "0.0.1",
+  "description": "Robot prototype to aide search and rescue professionals",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JWA111/RescueRobotics.git"
+  },
+  "author": "JWA111, zbrotman",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JWA111/RescueRobotics/issues"
+  },
+  "homepage": "https://github.com/JWA111/RescueRobotics#readme",
+  "dependencies": {
+    "kinect2": "^0.1.5"
+  }
+}
