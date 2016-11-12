@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/JWA111/RescueRobotics#readme",
   "dependencies": {
+    "fs": "0.0.1-security",
     "kinect2": "^0.1.5"
   }
 }
