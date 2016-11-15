@@ -5,7 +5,10 @@
 // recieves a request from the web socket
 var Kinect2 = require('kinect2');
 var kinect = new Kinect2();
+var jsonfile = require('jsonfile');
 
+var file = 'data.json';
+var file2 = 'data2.json';
 {
     if(kinect.open()) 
     {
@@ -13,9 +16,38 @@ var kinect = new Kinect2();
         //listen for body frames
         kinect.on('depthFrame', function(depthFrame)
         {
-            bufferString = JSON.stringify(depthFrame.toJSON());
-            console.log(JSON.parse(bufferString));
-            kinect.close();
+
+            bufferJson = depthFrame.toJSON();
+            
+            jsonfile.writeFile(file,bufferJson, function (err) {
+                console.error(err);
+            });
+            jsonfile.readFile(file, function(err, bufferJson) {
+                console.dir(bufferJson);
+            });
+
+            bufferString = JSON.stringify(bufferJson);
+
+            jsonfile.writeFile(file2,bufferString, function (err) {
+                console.error(err);
+            });
+            jsonfile.readFile(file, function(err, bufferString) {
+                console.dir(bufferSting);
+            });
+            //bufferString = JSON.stringify(depthFrame.toJSON());
+
+            bufferArray = JSON.parse(bufferString);
+            /*array = [];
+            for (var i = 0; i < bufferArray.length; ++i) {
+                array.push(callback(bufferArray[i]));
+            }
+            console.log(array);*/
+            depthArray = [];
+            console.log();
+            while (bufferArray.length) {
+                depthArray.push(bufferArray.splice(0,512));
+            }
+            console.log(depthArray);
             process.exit();
         });
 
