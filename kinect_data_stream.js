@@ -7,7 +7,7 @@ var Kinect2 = require('kinect2');
 var kinect = new Kinect2();
 var jsonfile = require('jsonfile');
 
-var file = 'data.json';
+var file = 'data-frame.json';
 var file2 = 'data2.json';
 {
     if(kinect.open()) 
@@ -18,36 +18,24 @@ var file2 = 'data2.json';
         {
 
             bufferJson = depthFrame.toJSON();
-            
-            jsonfile.writeFile(file,bufferJson, function (err) {
-                console.error(err);
-            });
-            jsonfile.readFile(file, function(err, bufferJson) {
-                console.dir(bufferJson);
-            });
 
             bufferString = JSON.stringify(bufferJson);
 
-            jsonfile.writeFile(file2,bufferString, function (err) {
-                console.error(err);
-            });
-            jsonfile.readFile(file, function(err, bufferString) {
-                console.dir(bufferSting);
-            });
-            //bufferString = JSON.stringify(depthFrame.toJSON());
+            // TODO Send to command via wss
 
             bufferArray = JSON.parse(bufferString);
-            /*array = [];
-            for (var i = 0; i < bufferArray.length; ++i) {
-                array.push(callback(bufferArray[i]));
-            }
-            console.log(array);*/
+
             depthArray = [];
-            console.log();
             while (bufferArray.length) {
-                depthArray.push(bufferArray.splice(0,512));
+                depthArray.push(bufferArray.data.splice(0,512));
             }
-            console.log(depthArray);
+
+            jsonfile.writeFile(file, { data: depthArray }, function (err) {
+                console.error(err);
+            });
+
+            dpthIngData = require(file);
+
             process.exit();
         });
 
@@ -62,8 +50,4 @@ var file2 = 'data2.json';
         }, 12000);
 
     }
-}
-
-{
-    
 }

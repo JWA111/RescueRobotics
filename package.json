@@ -19,15 +19,6 @@
   "homepage": "https://github.com/JWA111/RescueRobotics#readme",
   "dependencies": {
     "fs": "0.0.1-security",
-    "jsonfile": "^2.4.0",
-    "kinect2": "^0.1.5",
     "nodejs-websocket": "^1.7.0"
-  },
-  "devDependencies": {
-    "@types/node": "^6.0.46",
-    "del": "^2.2.2",
-    "gulp": "^3.9.1",
-    "gulp-typescript": "^3.1.2",
-    "typescript": "^2.0.9"
   }
 }
