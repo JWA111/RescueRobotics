@@ -38,8 +38,9 @@ if (kinect.open()) {
             if (!message || !message.command) {
                 console.error("Recieved invalid message");
             } else if (message.command == 'trajectory') {
-                const df = depthArraySubject.value();
-                connection.sendText(JSON.stringify({'dev': NAME, 'depth': df}));
+                getFrame().subscribe(function(df) {
+                    connection.sendText(JSON.stringify({'dev': NAME, 'depth': df}));
+                });
             }
         });
 
@@ -50,4 +51,8 @@ if (kinect.open()) {
     }, 5000);
 } else {
     console.error("Failed to open kinect");
+}
+
+function getFrame() {
+    return depthArraySubject.asObservable().first();
 }
