@@ -19,6 +19,7 @@
   "dependencies": {
     "fs": "0.0.1-security",
     "jsonfile": "^2.4.0",
-    "kinect2": "^0.1.5"
+    "kinect2": "^0.1.5",
+    "lodash": "^4.17.2"
   }
 }

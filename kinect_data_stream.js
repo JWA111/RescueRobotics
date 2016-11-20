@@ -5,10 +5,16 @@
 // recieves a request from the web socket
 var Kinect2 = require('kinect2');
 var kinect = new Kinect2();
-var jsonfile = require('jsonfile');
+var fs = require('fs');
+var _ = require('lodash');
 
-var file = 'data.json';
-var file2 = 'data2.json';
+var file_name = 'depth_data.json';
+var file = fs.createWriteStream(file_name);
+
+var file_name2 = 'depth_sum_data.json';
+var file2 = fs.createWriteStream(file_name2);
+
+
 {
     if(kinect.open()) 
     {
@@ -18,38 +24,37 @@ var file2 = 'data2.json';
         {
 
             bufferJson = depthFrame.toJSON();
-            
-            jsonfile.writeFile(file,bufferJson, function (err) {
-                console.error(err);
-            });
-            jsonfile.readFile(file, function(err, bufferJson) {
-                console.dir(bufferJson);
-            });
-
             bufferString = JSON.stringify(bufferJson);
-
-            jsonfile.writeFile(file2,bufferString, function (err) {
-                console.error(err);
-            });
-            jsonfile.readFile(file, function(err, bufferString) {
-                console.dir(bufferSting);
-            });
-            //bufferString = JSON.stringify(depthFrame.toJSON());
-
+            
             bufferArray = JSON.parse(bufferString);
-            /*array = [];
-            for (var i = 0; i < bufferArray.length; ++i) {
-                array.push(callback(bufferArray[i]));
-            }
-            console.log(array);*/
             depthArray = [];
-            console.log();
-            while (bufferArray.length) {
-                depthArray.push(bufferArray.splice(0,512));
+            //console.log(bufferString);
+            while (bufferArray.data.length) {
+                depthArray.push(bufferArray.data.splice(0,512));
             }
-            console.log(depthArray);
+            obj = {data: depthArray};
+
+            // var rowSums = [];
+            // depthArray.forEach( function(row) {
+            //     var rowSum = _.reduce(row, function(sum, n) {
+            //         return sum + n;
+            //     }, 0)
+            //     rowSums.push(rowSum);
+            // });
+            // file.write(rowSums.join('\t'));
+
+            // var out = [];
+            // depthArray.forEach( function(row) {
+            //     out.push('[' + row.join(',') + ']');
+            // });
+            // var outjson = '{ "data": [' + out.join(',') + ']}';
+            // file.write(outjson);
+            
+            trajChange = calcPath(depthArray, 256);
+            console.log(trajChange);
             process.exit();
         });
+
 
         //request body frames
         kinect.openDepthReader();
@@ -64,6 +69,47 @@ var file2 = 'data2.json';
     }
 }
 
-{
+function calcPath(depthArry, objective){
+  depthSum = [];
+  depthFrame = depthArry;
+  obj = objective;
+  const MAX = depthFrame.length;
+  const MIDDLE = MAX/2;
+
+  var trajectory = obj;
+  var leftIterator = obj;
+  var rightIterator = obj;
+  
+  if(obj<=0 || obj>=MAX){
+      return obj - MIDDLE;
+  }
+
+  for(row of depthFrame) {
+      for(var i = 0; i < row.length; i++){
+          if(row[i] == 0){
+              depthSum[i] = 0;
+          }
+          else depthSum[i] = MAX - row
+      }
+  }
+
+    // var out = [];
     
+    // var outjson = '{ "data": [' + depthSum.join(',') + ']}';
+    // file2.write(outjson);
+console.log(depthSum[trajectory]);
+  while(leftIterator >=0 && rightIterator <= depthFrame[0].length){
+      if(depthSum[leftIterator]<=depthSum[trajectory]){
+          trajectory = leftIterator;
+      }
+      if(depthSum[rightIterator]<=depthSum[trajectory]){
+          trajectory = rightIterator;
+      }
+      if(depthSum[trajectory] == 0){
+          break;
+      }
+      leftIterator--;
+      rightIterator++;
+  }
+  return trajectory-MIDDLE;
 }
