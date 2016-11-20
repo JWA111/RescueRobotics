@@ -35,7 +35,7 @@ var server = ws.createServer(function (conn) {
             if (message.depth) {
                 var sent = false;
                 console.log('depth', message.depth.length, message.depth[0].length);
-                var dt = calcDT(message.depth, objective);
+                var dt = calcDT(message.depth);
                 server.connections.forEach(function(connection) {
                     if (connection.dev === 'robot') {
                         connection.sendText(JSON.stringify({'dev': NAME, 'dt': dt}));
@@ -68,7 +68,7 @@ var server = ws.createServer(function (conn) {
 }).listen(port)
 console.log('listening on ' + ip + ':' + port);
 
-function calcDT(depthArry, objective){
+function calcDT(depthArry){
   depthSum = [];
   depthFrame = depthArry;
   obj = objective;
@@ -79,31 +79,33 @@ function calcDT(depthArry, objective){
   var leftIterator = obj;
   var rightIterator = obj;
   
-  if(obj<=0 || obj>=MAX){
-      return obj - MIDDLE;
+  if (obj <= 0 || obj >= MAX) {
+      return MIDDLE - obj;
   }
 
-  for(row of depthFrame) {
-      for(var i = 0; i < row.length; i++){
-          if(row[i] == 0){
-              depthSum[i] = 0;
+  for (var i=0; i<depthFrame.length; i++) {
+      const sum = depthFrame[i].reduce(function(s, d) {
+          if (d !== 0) {
+            return s + MAX - d;
+          } else {
+              return s;
           }
-          else depthSum[i] = MAX - row
-      }
+      }, 0);
+      depthSum[i] = sum;
   }
 
-  while(leftIterator >=0 && rightIterator <= depthFrame[0].length){
-      if(depthSum[leftIterator]<=depthSum[trajectory]){
+  while (leftIterator >= 0 && rightIterator <= depthSum.length) {
+      if (depthSum[leftIterator] < depthSum[trajectory]) {
           trajectory = leftIterator;
       }
-      if(depthSum[rightIterator]<=depthSum[trajectory]){
+      if (depthSum[rightIterator] < depthSum[trajectory]) {
           trajectory = rightIterator;
-      }
-      if(depthSum[trajectory] == 0){
-          break;
       }
       leftIterator--;
       rightIterator++;
   }
-  return trajectory-MIDDLE;
+  const dt = trajectory - MIDDLE;
+  objective = objective - dt;
+  console.log(objective);
+  return dt;
 }
