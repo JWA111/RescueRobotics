@@ -5,10 +5,15 @@
 // recieves a request from the web socket
 var Kinect2 = require('kinect2');
 var kinect = new Kinect2();
-var jsonfile = require('jsonfile');
+var fs = require('fs');
+var _ = require('lodash');
 
-var file = 'data-frame.json';
-var file2 = 'data2.json';
+var file_name = 'depth_data.json';
+var file = fs.createWriteStream(file_name);
+
+var file_name2 = 'depth_sum_data.json';
+var file2 = fs.createWriteStream(file_name2);
+
 {
     if(kinect.open()) 
     {
@@ -18,26 +23,20 @@ var file2 = 'data2.json';
         {
 
             bufferJson = depthFrame.toJSON();
-
             bufferString = JSON.stringify(bufferJson);
-
-            // TODO Send to command via wss
-
+            
             bufferArray = JSON.parse(bufferString);
-
             depthArray = [];
-            while (bufferArray.length) {
+            //console.log(bufferString);
+            while (bufferArray.data.length) {
                 depthArray.push(bufferArray.data.splice(0,512));
             }
-
-            jsonfile.writeFile(file, { data: depthArray }, function (err) {
-                console.error(err);
-            });
-
-            dpthIngData = require(file);
-
-            process.exit();
+            obj = {data: depthArray};
+            
+            trajChange = calcPath(depthArray, 256);
+            console.log(trajChange);
         });
+
 
         //request body frames
         kinect.openDepthReader();
@@ -50,4 +49,45 @@ var file2 = 'data2.json';
         }, 12000);
 
     }
+}
+
+function calcPath(depthArry, objective){
+  depthSum = [];
+  depthFrame = depthArry;
+  obj = objective;
+  const MAX = depthFrame.length;
+  const MIDDLE = MAX/2;
+
+  var trajectory = obj;
+  var leftIterator = obj;
+  var rightIterator = obj;
+  
+  if(obj<=0 || obj>=MAX){
+      return obj - MIDDLE;
+  }
+
+  for(row of depthFrame) {
+      for(var i = 0; i < row.length; i++){
+          if(row[i] == 0){
+              depthSum[i] = 0;
+          }
+          else depthSum[i] = MAX - row
+      }
+  }
+
+  console.log(depthSum[trajectory]);
+  while(leftIterator >=0 && rightIterator <= depthFrame[0].length){
+      if(depthSum[leftIterator]<=depthSum[trajectory]){
+          trajectory = leftIterator;
+      }
+      if(depthSum[rightIterator]<=depthSum[trajectory]){
+          trajectory = rightIterator;
+      }
+      if(depthSum[trajectory] == 0){
+          break;
+      }
+      leftIterator--;
+      rightIterator++;
+  }
+  return trajectory-MIDDLE;
 }

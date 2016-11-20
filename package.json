@@ -19,6 +19,8 @@
   "homepage": "https://github.com/JWA111/RescueRobotics#readme",
   "dependencies": {
     "fs": "0.0.1-security",
-    "nodejs-websocket": "^1.7.0"
+    "nodejs-websocket": "^1.7.0",
+    "kinect2": "^0.1.5",
+    "lodash": "^4.17.2"
   }
 }
