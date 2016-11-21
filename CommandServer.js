@@ -45,16 +45,20 @@ var server = ws.createServer(function (conn) {
                 if (!sent) {
                     console.error("Cannot find robot");
                 }
-            } else if (message.command && message.command === 'trajectory') {
-                var sent = false;
-                server.connections.forEach(function(connection) {
-                    if (connection.dev === 'kinect') {
-                        connection.sendText(JSON.stringify({'dev': NAME, 'command': 'trajectory'}));
-                        sent = true;
+            } else if (message.command) {
+                if (message.command === 'trajectory') {
+                    var sent = false;
+                    server.connections.forEach(function(connection) {
+                        if (connection.dev === 'kinect') {
+                            connection.sendText(JSON.stringify({'dev': NAME, 'command': 'trajectory'}));
+                            sent = true;
+                        }
+                    });
+                    if (!sent) {
+                        console.error("Cannot find kinect");
                     }
-                });
-                if (!sent) {
-                    console.error("Cannot find kinect");
+                } else if (message.command === 'detected') {
+                    console.log('SURVIVOR FOUND!!!!!!!!!!!!!!!!!!');
                 }
             }
         }
@@ -80,7 +84,9 @@ function calcDT(depthArry){
   var rightIterator = obj;
   
   if (obj <= 0 || obj >= MAX) {
-      return MIDDLE - obj;
+      const dt = MIDDLE - obj;
+      objective = objective - dt;
+      return dt;
   }
 
   for (var i=0; i<depthFrame.length; i++) {
