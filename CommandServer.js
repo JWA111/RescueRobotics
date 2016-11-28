@@ -1,10 +1,21 @@
 
 var ws = require('nodejs-websocket');
 var os = require('os');
+var math = require('mathjs');
 
 var ifaces = os.networkInterfaces();
 var NAME = 'commander';
-var objective = 256;
+// degrees per turn
+var turn = 13;
+// Forward moving distance cm
+var forwardDistance = 25.5;
+// Bearing degrees, location coordinates in cm
+var objective = {
+    'location': math.matrix([[5000], [5000]])
+};
+var depthFrame;
+var robotReady = false;
+var kinected = false;
 
 // Get ip
 var ip;
@@ -33,29 +44,13 @@ var server = ws.createServer(function (conn) {
                 conn.dev = message.dev;
             }
             if (message.depth) {
-                var sent = false;
-                console.log('depth', message.depth.length, message.depth[0].length);
-                var dt = calcDT(message.depth);
-                server.connections.forEach(function(connection) {
-                    if (connection.dev === 'robot') {
-                        connection.sendText(JSON.stringify({'dev': NAME, 'dt': dt}));
-                        sent = true;
-                    }
-                });
-                if (!sent) {
-                    console.error("Cannot find robot");
-                }
+                depthFrame = message.depth;
             } else if (message.command) {
-                if (message.command === 'trajectory') {
-                    var sent = false;
-                    server.connections.forEach(function(connection) {
-                        if (connection.dev === 'kinect') {
-                            connection.sendText(JSON.stringify({'dev': NAME, 'command': 'trajectory'}));
-                            sent = true;
-                        }
-                    });
-                    if (!sent) {
-                        console.error("Cannot find kinect");
+                if (message.command === 'ready') {
+                    if (conn.dev === 'robot') {
+                        robotReady = true;
+                    } else if (conn.dev === 'kinect') {
+                        kinected = true;
                     }
                 } else if (message.command === 'detected') {
                     console.log('SURVIVOR FOUND!!!!!!!!!!!!!!!!!!');
@@ -69,12 +64,56 @@ var server = ws.createServer(function (conn) {
     conn.on('error', function (err) {
         console.error(err);
     });
-}).listen(port)
+}).listen(port);
 console.log('listening on ' + ip + ':' + port);
 
-function calcDT(depthArry){
+// main
+while (true) {
+    if (kinected) {
+        getFrame();
+        if (robotReady) {
+            changeTrajectory();
+            robotReady = false;
+        }
+    }
+}
+
+function getFrame() {
+    var sent = false;
+    server.connections.forEach(function(connection) {
+        if (connection.dev === 'kinect') {
+            connection.sendText(JSON.stringify({'dev': NAME, 'command': 'trajectory'}));
+            sent = true;
+        }
+    });
+    if (!sent) {
+        console.error("Cannot find kinect");
+    }
+}
+
+function changeTrajectory() {
+    var direction = navigate();
+    var sent = false;
+    server.connections.forEach(function(connection) {
+        if (connection.dev === 'robot') {
+            connection.sendText(JSON.stringify({'dev': NAME, 'command': direction}));
+            sent = true;
+        }
+    });
+    if (!sent) {
+        console.error("Cannot find robot");
+    }
+}
+
+function rotation(degrees) {
+    return math.matrix([
+        [cos(degrees), -1*sin(degrees)],
+        [sin(degrees), cos(degrees)]
+    ]);
+}
+
+function navigate() {
   depthSum = [];
-  depthFrame = depthArry;
   obj = objective;
   const MAX = depthFrame.length;
   const MIDDLE = MAX/2;
@@ -111,7 +150,14 @@ function calcDT(depthArry){
       rightIterator++;
   }
   const dt = trajectory - MIDDLE;
-  objective = objective - dt;
-  console.log(objective);
-  return dt;
+  if (dt < 0) {
+      objective.location = math.multiply(rotation(turn), objective.location);
+      return 'left';
+  } else if (dt > 0) {
+      objective.location = math.multiply(rotation(360 - turn), objective.location);
+      return 'right';
+  } else {
+      objective.location = math.subtract(objective.location, math.matrix([[forwardDistance],[0]]));
+      return 'forward';
+  }
 }

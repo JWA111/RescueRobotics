@@ -27,85 +27,88 @@ connection.on('error', function (err) {
 
 connection.on('text', function (str) {
     const message = JSON.parse(str);
-    if (!message) {
+    if (!message || !message.hasOwnProperty('command')) {
         console.error("Recieved invalid message");
-    } else if (message.hasOwnProperty('dt')) {
-        // TODO make trajectory changes
-        console.log('dt', message.dt);
-        const dt = message.dt;
-        if (dt >= -30 && dt <= 30) {
-            forward(1);
-            console.log('fwd');
-        } else if (dt > 30) {
-            console.log('right');            
-            right(1);
-        } else if (dt < -30) {
-            console.log('left');
-            left(1);
-        }
-        setTimeout(function() {
-            connection.sendText(JSON.stringify({'dev': NAME, 'command': 'trajectory'}));
-        }, 3000);
+        signalReady();
+    } else if (message.command === 'forward') {
+        forward();
+    } else if (message.command === 'reverse') {
+        reverse();
+    } else if (message.command === 'right') {
+        right();
+    } else if (message.command === 'left') {
+        left();
     } else {
         console.error("Unknown command received", message);
+        signalReady();
     }
 });
 
 connection.on('connect', function () {
     console.log('connected to command server');
-    connection.sendText(JSON.stringify({'dev': NAME, 'command': 'trajectory'}));
+    signalReady();
 });
 
-// time in seconds
-function forward(time) {
+function signalReady() {
+    connection.sendText(JSON.stringify({'dev': NAME, 'command': 'ready'}));
+}
+
+function forward() {
     leftFWD.write(1, function() {
         setTimeout(function() {
             leftFWD.write(0, function() {});
-        }, 1000 * time/2);
+        }, 500);
     });
     rightFWD.write(1, function() {
         setTimeout(function() {
-            rightFWD.write(0, function() {});
-        }, 1000 * time/2);
+            rightFWD.write(0, function() {
+                signalReady();
+            });
+        }, 500);
     });
 }
 
-// time in seconds
-function reverse(time) {
+function reverse() {
     leftBWD.write(1, function() {
         setTimeout(function() {
             leftBWD.write(0, function() {});
-        }, 1000 * time/2);
+        }, 500);
     });
     rightBWD.write(1, function() {
         setTimeout(function() {
-            rightBWD.write(0, function() {});
-        }, 1000 * time/2);
+            rightBWD.write(0, function() {
+                signalReady();
+            });
+        }, 500);
     });
 }
 
-function left(time) {
+function left() {
     leftBWD.write(1, function() {
         setTimeout(function() {
             leftBWD.write(0, function() {});
-        }, 1000 * time/2);
+        }, 250);
     });
     rightFWD.write(1, function() {
         setTimeout(function() {
-            rightFWD.write(0, function() {});
-        }, 1000 * time/2);
+            rightFWD.write(0, function() {
+                signalReady();
+            });
+        }, 250);
     });
 }
 
-function right(time) {
+function right() {
     rightBWD.write(1, function() {
         setTimeout(function() {
             rightBWD.write(0, function() {});
-        }, 1000 * time/2);
+        }, 250);
     });
     leftFWD.write(1, function() {
         setTimeout(function() {
-            leftFWD.write(0, function() {});
-        }, 1000 * time/2);
+            leftFWD.write(0, function() {
+                signalReady();
+            });
+        }, 250);
     });
 }
