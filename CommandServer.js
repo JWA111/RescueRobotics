@@ -7,12 +7,25 @@ var ifaces = os.networkInterfaces();
 var NAME = 'commander';
 // degrees per turn
 var turn = 13;
+
 // Forward moving distance cm
 var forwardDistance = 25.5;
+
+// Max readable depth in meters
+const maxReadableDepth = 4.5;
+
+// Depth range limit for obstacle avoidance in meters
+const obstacleMaxDepth = 1.5;
+
+// Max depth value for obstacle avoidance
+var depthLimit = obstacleMaxDepth * 256 / maxReadableDepth;
+
 // Bearing degrees, location coordinates in cm
 var objective = {
-    'location': math.matrix([[5000], [5000]])
+    'location': math.matrix([[5000], [0]])
 };
+
+// Global value storage
 var depthFrame;
 var robotReady = false;
 var kinected = false;
@@ -92,11 +105,17 @@ function getFrame() {
 }
 
 function changeTrajectory() {
-    var direction = navigate();
+    const dt = calcDT();
+    const navigation = navigate(dt);
     var sent = false;
     server.connections.forEach(function(connection) {
         if (connection.dev === 'robot') {
-            connection.sendText(JSON.stringify({'dev': NAME, 'command': direction}));
+            connection.sendText(JSON.stringify({
+                'dev': NAME,
+                'command': 'navigate',
+                'direction': navigation.direction,
+                'iterations': navigation.iterations
+            }));
             sent = true;
         }
     });
@@ -112,7 +131,7 @@ function rotation(degrees) {
     ]);
 }
 
-function navigate() {
+function calcDT() {
   depthSum = [];
   obj = objective;
   const MAX = depthFrame.length;
@@ -130,11 +149,10 @@ function navigate() {
 
   for (var i=0; i<depthFrame.length; i++) {
       const sum = depthFrame[i].reduce(function(s, d) {
-          if (d !== 0) {
-            return s + MAX - d;
-          } else {
-              return s;
+          if (d !== 0 && d <= depthLimit) {
+            s += MAX - d;
           }
+         return s;
       }, 0);
       depthSum[i] = sum;
   }
@@ -150,14 +168,27 @@ function navigate() {
       rightIterator++;
   }
   const dt = trajectory - MIDDLE;
-  if (dt < 0) {
+
+  return dt;
+}
+
+function navigate(dt) {
+  // TODO: Use dt to figure out how many turns are needed
+  var navigation = {
+      'direction': undefined,
+      'iterations': undefined
+  };
+  if (dt < -10) {
       objective.location = math.multiply(rotation(turn), objective.location);
-      return 'left';
-  } else if (dt > 0) {
+      objective.location = math.subtract(objective.location, math.matrix([[forwardDistance],[0]]));
+      navigation.direction = 'left';
+  } else if (dt > 10) {
       objective.location = math.multiply(rotation(360 - turn), objective.location);
-      return 'right';
+      objective.location = math.subtract(objective.location, math.matrix([[forwardDistance],[0]]));
+      navigation.direction = 'right';
   } else {
       objective.location = math.subtract(objective.location, math.matrix([[forwardDistance],[0]]));
-      return 'forward';
+      navigation.direction = 'forward';
   }
+  return navigation;
 }
