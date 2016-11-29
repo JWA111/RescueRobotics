@@ -7,8 +7,9 @@ const IN2 = 19;
 const IN3 = 13;
 const IN4 = 6;
 
-// Motion values
-const FWD = 10;
+const forwardTime = 500;
+const turnTime = 250;
+const turnDelay = 1;
 
 // Setup pins
 var GPIO = require('onoff').Gpio,
@@ -30,13 +31,15 @@ connection.on('text', function (str) {
     if (!message || !message.hasOwnProperty('command')) {
         console.error("Recieved invalid message");
         signalReady();
-    } else if (message.command === 'navigate') {
+    } else if (message.command === 'navigation' || message.command === 'reorientation') {
+        const reorient = (message.command === 'reorientation');
         if (!message.hasOwnProperty('direction') || !message.hasOwnProperty('iterations')) {
             console.error("Missing navigation parameters", message);
+            signalReady();
         } else if (message.direction === 'right') {
-            right(message.iterations);
+            right(message.iterations, reorient);
         } else if (message.direction === 'left') {
-            left(message.iterations);
+            left(message.iterations, reorient);
         } else if (message.direction === 'forward') {
             forward(message.iterations);
         }
@@ -55,85 +58,65 @@ function signalReady() {
     connection.sendText(JSON.stringify({'dev': NAME, 'command': 'ready'}));
 }
 
+function driveWheels(wheel1, wheel2, duration, count, finisher) {
+    var readyNextManuver = false;
+    setTimeout(function() {
+        wheel1.write(1, function() {
+            setTimeout(function() {
+                wheel1.write(0, function() {
+                    if (!readyNextManuver) {
+                        readyNextManuver = true;
+                    } else {
+                        if (count > 0) {
+                            count--;
+                            driveWheels(wheel1, wheel2, duration, count, finisher);
+                        } else {
+                            finisher();
+                        }
+                    }
+                });
+            }, duration);
+        });
+    }, turnDelay);
+    setTimeout(function() {
+        wheel2.write(1, function() {
+            setTimeout(function() {
+                wheel2.write(0, function() {
+                    if (!readyNextManuver) {
+                        readyNextManuver = true;
+                    } else {
+                        if (count > 0) {
+                            count--;
+                            driveWheels(wheel1, wheel2, duration, count, finisher);
+                        } else {
+                            finisher();
+                        }
+                    }
+                });
+            }, duration);
+        });
+    }, 0);
+}
+
 function forward(count) {
     if (!count) {
         count = 1;
     }
-    leftFWD.write(1, function() {
-        setTimeout(function() {
-            leftFWD.write(0, function() {});
-        }, 501);
-    });
-    rightFWD.write(1, function() {
-        setTimeout(function() {
-            rightFWD.write(0, function() {
-                if (count > 0) {
-                    forward(count);
-                } else {
-                    signalReady();
-                }
-            });
-        }, 500);
-    });
+    driveWheels(leftFWD, rightFWD, forwardTime, count, signalReady);
 }
 
-function reverse() {
-    leftBWD.write(1, function() {
-        setTimeout(function() {
-            leftBWD.write(0, function() {});
-        }, 501);
-    });
-    rightBWD.write(1, function() {
-        setTimeout(function() {
-            rightBWD.write(0, function() {
-                signalReady();
-            });
-        }, 500);
-    });
-}
-
-function left(count) {
-    if (!count) {
-        count = 1;
+function left(count, reorient) {
+    if (reorient) {
+        driveWheels(leftBWD, rightFWD, turnTime, count, signalReady);
+    } else {
+        driveWheels(leftBWD, rightFWD, turnTime, count, forward);
     }
-    leftBWD.write(1, function() {
-        setTimeout(function() {
-            leftBWD.write(0, function() {});
-        }, 251);
-    });
-    rightFWD.write(1, function() {
-        setTimeout(function() {
-            rightFWD.write(0, function() {
-                count--;
-                if (count > 0) {
-                    left(count);
-                } else {
-                    forward(1);
-                }
-            });
-        }, 250);
-    });
 }
 
-function right(count) {
-    if (!count) {
-        count = 1;
+function right(count, reorient) {
+    if (reorient) {
+        driveWheels(rightBWD, leftFWD, turnTime, count, signalReady);
+    } else {
+        driveWheels(rightBWD, leftFWD, turnTime, count, forward);
     }
-    rightBWD.write(1, function() {
-        setTimeout(function() {
-            rightBWD.write(0, function() {});
-        }, 251);
-    });
-    leftFWD.write(1, function() {
-        setTimeout(function() {
-            leftFWD.write(0, function() {
-                count--;
-                if (count > 0) {
-                    right(count);
-                } else {
-                    forward(1);
-                }
-            });
-        }, 250);
-    });
 }

@@ -6,7 +6,7 @@ var kinect = new Kinect2();
 
 var commandHost = 'ws://10.140.171.242:8001';
 var NAME = 'kinect';
-var depthArraySubject = new Rx.BehaviorSubject([[]]);
+var depthArraySubject = new Rx.BehaviorSubject(undefined);
 
 if (kinect.open()) {
     console.log("Kinect Opened");
@@ -27,32 +27,32 @@ if (kinect.open()) {
     //request body frames
     kinect.openDepthReader();
 
-    setTimeout(function() {
-        var connection = ws.connect(commandHost);
-        connection.on('error', function (err) {
-            console.error(err);
-        });
+    var connection = ws.connect(commandHost);
+    connection.on('error', function (err) {
+        console.error(err);
+    });
 
-        connection.on('text', function (str) {
-            const message = JSON.parse(str);
-            if (!message || !message.command) {
-                console.error("Recieved invalid message");
-            } else if (message.command == 'trajectory') {
-                getFrame().subscribe(function(df) {
-                    connection.sendText(JSON.stringify({'dev': NAME, 'depth': df}));
-                });
-            }
-        });
+    connection.on('text', function (str) {
+        const message = JSON.parse(str);
+        if (!message || !message.command) {
+            console.error("Recieved invalid message");
+        } else if (message.command == 'trajectory') {
+            getFrame().subscribe(function(df) {
+                connection.sendText(JSON.stringify({'dev': NAME, 'depth': df}));
+            });
+        }
+    });
 
-        connection.on('connect', function () {
-            console.log('connected to command server');
-            connection.sendText(JSON.stringify({'dev': NAME}));
-        });
-    }, 5000);
+    connection.on('connect', function () {
+        console.log('connected to command server');
+        connection.sendText(JSON.stringify({'dev': NAME}));
+    });
 } else {
     console.error("Failed to open kinect");
 }
 
 function getFrame() {
-    return depthArraySubject.asObservable().first();
+    return depthArraySubject.asObservable().filter(function(dataFrame) {
+        return dataFrame !== undefined;
+    }).first();
 }
