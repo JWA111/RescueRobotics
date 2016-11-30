@@ -25,10 +25,10 @@ const ppd = 7;
 const obstacleMaxDepth = 1.5;
 
 // Max depth value for obstacle avoidance
-var depthLimit = floor(obstacleMaxDepth * 256 / maxReadableDepth);
+var depthLimit = Math.floor(obstacleMaxDepth * 256 / maxReadableDepth);
 
 // Pixels per bin
-var ppb = floor(obstacleMaxDepth * ppd / maxReadableDepth);
+var ppb = Math.floor(obstacleMaxDepth * ppd / maxReadableDepth);
 
 // Bearing degrees, location coordinates in cm
 var objective = {
@@ -36,7 +36,6 @@ var objective = {
 };
 
 // Global value storage
-var depthFrame;
 var robotReady = false;
 var kinected = false;
 
@@ -67,7 +66,10 @@ var server = ws.createServer(function(conn) {
         conn.dev = message.dev;
       }
       if (message.depth) {
-        depthFrame = message.depth;
+        if (robotReady) {
+          changeTrajectory(message.depth);
+          robotReady = false;
+        }
       } else if (message.command) {
         if (message.command === 'ready') {
           if (conn.dev === 'robot') {
@@ -90,32 +92,8 @@ var server = ws.createServer(function(conn) {
 }).listen(port);
 console.log('listening on ' + ip + ':' + port);
 
-// main
-while (true) {
-  if (kinected) {
-    getFrame();
-    if (robotReady) {
-      changeTrajectory();
-      robotReady = false;
-    }
-  }
-}
-
-function getFrame() {
-  var sent = false;
-  server.connections.forEach(function(connection) {
-    if (connection.dev === 'kinect') {
-      connection.sendText(JSON.stringify({'dev': NAME, 'command': 'trajectory'}));
-      sent = true;
-    }
-  });
-  if (!sent) {
-    console.error("Cannot find kinect");
-  }
-}
-
-function changeTrajectory() {
-  const turns = calcTurning();
+function changeTrajectory(depthFrame) {
+  const turns = calcTurning(depthFrame);
   const navigation = navigate(turns);
   var sent = false;
   server.connections.forEach(function(connection) {
@@ -141,10 +119,10 @@ function rotation(degrees) {
   ]);
 }
 
-function calcTurning() {
+function calcTurning(depthFrame) {
   if (objective.location[0][0] <= 0) {
     const rotation = atan2(location[1][0]/location[0][0]) * 57.3;
-    return floor(rotation / dpt);
+    return Math.floor(rotation / dpt);
   }
 
   bins = [];
@@ -156,11 +134,11 @@ function calcTurning() {
       }
       return s;
     }, 0);
-    const binNumber = floor(i/ppb);
+    const binNumber = Math.floor(i/ppb);
     bins[binNumber] += sum;
   }
 
-  const MIDDLE = floor(bins.length/2);
+  const MIDDLE = Math.floor(bins.length/2);
   var trajectory = MIDDLE;
   var leftIterator = MIDDLE;
   var rightIterator = MIDDLE;

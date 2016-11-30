@@ -21,7 +21,7 @@ if (kinect.open()) {
         while (bufferArray.data.length) {
             depthArray.push(bufferArray.data.splice(0,512));
         }
-        depthArraySubject.next(depthArray);
+        connection.sendText(JSON.stringify({'dev': NAME, 'depth': depthArray})); 
     });
 
     //request body frames
@@ -37,9 +37,6 @@ if (kinect.open()) {
         if (!message || !message.command) {
             console.error("Recieved invalid message");
         } else if (message.command == 'trajectory') {
-            getFrame().subscribe(function(df) {
-                connection.sendText(JSON.stringify({'dev': NAME, 'depth': df}));
-            });
         }
     });
 
