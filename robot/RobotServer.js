@@ -4,12 +4,14 @@ var gpio = require('onoff');
 // Relay inputs
 const IN1 = 26;
 const IN2 = 19; 
-const IN3 = 13;
-const IN4 = 6;
+const IN3 = 6;
+const IN4 = 13;
 
-const forwardTime = 500;
-const turnTime = 250;
-const turnDelay = 1;
+const forwardTime = 240;
+const turnTime = [0, 160, 200, 260, 320];
+const turningLimit = 4;
+const movementDelay = 600;
+const readyDelay = 2000;
 
 // Setup pins
 var GPIO = require('onoff').Gpio,
@@ -55,43 +57,24 @@ connection.on('connect', function () {
 });
 
 function signalReady() {
-    connection.sendText(JSON.stringify({'dev': NAME, 'command': 'ready'}));
+    setTimeout(function() {
+        connection.sendText(JSON.stringify({'dev': NAME, 'command': 'ready'}));
+    }, readyDelay);
 }
 
-function driveWheels(wheel1, wheel2, duration, count, finisher) {
-    var readyNextManuver = false;
+function driveWheels(wheel1, wheel2, duration, finisher) {
     setTimeout(function() {
         wheel1.write(1, function() {
             setTimeout(function() {
-                wheel1.write(0, function() {
-                    if (!readyNextManuver) {
-                        readyNextManuver = true;
-                    } else {
-                        if (count > 0) {
-                            count--;
-                            driveWheels(wheel1, wheel2, duration, count, finisher);
-                        } else {
-                            finisher();
-                        }
-                    }
-                });
+                wheel1.write(0, function() {});
             }, duration);
         });
-    }, turnDelay);
+    }, 0);
     setTimeout(function() {
         wheel2.write(1, function() {
             setTimeout(function() {
                 wheel2.write(0, function() {
-                    if (!readyNextManuver) {
-                        readyNextManuver = true;
-                    } else {
-                        if (count > 0) {
-                            count--;
-                            driveWheels(wheel1, wheel2, duration, count, finisher);
-                        } else {
-                            finisher();
-                        }
-                    }
+                    finisher();
                 });
             }, duration);
         });
@@ -99,24 +82,53 @@ function driveWheels(wheel1, wheel2, duration, count, finisher) {
 }
 
 function forward(count) {
-    if (!count) {
-        count = 1;
+    if (count && count > 1) {
+        driveWheels(leftFWD, rightFWD, forwardTime, function() {
+            setTimeout(function() {
+                forward(count-1);
+            }, movementDelay);
+        });
+    } else {
+        driveWheels(leftFWD, rightFWD, forwardTime, signalReady);
     }
-    driveWheels(leftFWD, rightFWD, forwardTime, count, signalReady);
 }
 
 function left(count, reorient) {
-    if (reorient) {
-        driveWheels(leftBWD, rightFWD, turnTime, count, signalReady);
+    var duration = turnTime[count];
+    if (count > turningLimit) {
+        duration = turnTime[turningLimit];
+        driveWheels(leftBWD, rightFWD, duration, function() {
+            setTimeout(function() {
+                left(count-turningLimit, reorient);
+            }, movementDelay);
+        });
+    } else if (reorient) {
+        driveWheels(leftBWD, rightFWD, duration, signalReady);
     } else {
-        driveWheels(leftBWD, rightFWD, turnTime, count, forward);
+        driveWheels(leftBWD, rightFWD, duration, function() {
+            setTimeout(function() {
+                forward();
+            }, movementDelay);
+        });
     }
 }
 
 function right(count, reorient) {
-    if (reorient) {
-        driveWheels(rightBWD, leftFWD, turnTime, count, signalReady);
+    var duration = turnTime[count];
+    if (count > turningLimit) {
+        duration = turnTime[turningLimit];
+       driveWheels(rightBWD, leftFWD, duration, function() {
+            setTimeout(function() {
+                right(count-turningLimit, reorient);
+            }, movementDelay);
+        });
+    } else if (reorient) {
+        driveWheels(rightBWD, leftFWD, duration, signalReady);
     } else {
-        driveWheels(rightBWD, leftFWD, turnTime, count, forward);
+        driveWheels(rightBWD, leftFWD, duration, function() {
+            setTimeout(function() {
+                forward();
+            }, movementDelay);
+        });
     }
 }

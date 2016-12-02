@@ -2,11 +2,8 @@
   "name": "rescue-robotics",
   "version": "0.0.1",
   "description": "Robot prototype to aide search and rescue professionals",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "gulp compile"
-  },
+  "main": "RobotServer.js",
+  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/JWA111/RescueRobotics.git"
@@ -18,11 +15,6 @@
   },
   "homepage": "https://github.com/JWA111/RescueRobotics#readme",
   "dependencies": {
-    "@reactivex/rxjs": "^5.0.0-rc.4",
-    "fs": "0.0.1-security",
-    "kinect2": "^0.1.5",
-    "lodash": "^4.17.2",
-    "mathjs": "^3.8.0",
     "nodejs-websocket": "^1.7.0",
     "onoff": "^1.1.1",
     "rpi-gpio": "^0.7.0"
