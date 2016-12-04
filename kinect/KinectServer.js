@@ -24,8 +24,13 @@ if (kinect.open()) {
         connection.sendText(JSON.stringify({'dev': NAME, 'depth': depthArray})); 
     });
 
-    //request body frames
+    kinect.on('bodyFrame', function(bodyFrame){
+        connection.sendText(JSON.stringify({'dev': NAME, 'command': 'detected'})); 
+    });
+
+    //request Depth and Body frames
     kinect.openDepthReader();
+    kinect.openBodyReader();
 
     var connection = ws.connect(commandHost);
     connection.on('error', function (err) {

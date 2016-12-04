@@ -115,6 +115,19 @@ var server = ws.createServer(function(conn) {
           }
         } else if (message.command === 'detected') {
           console.log('SURVIVOR FOUND!!!!!!!!!!!!!!!!!!');
+          var sent = false;
+          server.connections.forEach(function(connection) {
+            if (connection.dev === 'robot') {
+              connection.sendText(JSON.stringify({
+                'dev': NAME,
+                'command': 'survivor'
+              }));
+              sent = true;
+            }
+          });
+          if (!sent) {
+            console.error("Cannot find robot");
+          }
         }
       }
     }

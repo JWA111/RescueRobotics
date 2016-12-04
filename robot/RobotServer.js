@@ -1,5 +1,6 @@
 var ws = require('nodejs-websocket');
 var gpio = require('onoff');
+const spawn = require('child_process').spawn;
 
 // Relay inputs
 const IN1 = 26;
@@ -23,6 +24,7 @@ var GPIO = require('onoff').Gpio,
 var commandHost = 'ws://192.168.0.62:8001';
 var connection = ws.connect(commandHost);
 var NAME = 'robot';
+var playingSound = false;
 
 connection.on('error', function (err) {
     console.error(err);
@@ -45,6 +47,8 @@ connection.on('text', function (str) {
         } else if (message.direction === 'forward') {
             forward(message.iterations);
         }
+    } else if (message.command === 'survivor') {
+        playTune();
     } else {
         console.error("Unknown command received", message);
         signalReady();
@@ -131,4 +135,15 @@ function right(count, reorient) {
             }, movementDelay);
         });
     }
+}
+
+function playTune() {
+    if (playingSound) {
+        return;
+    }
+    playingSound = true;
+    var sound = spawn('python', ['./sound.py']);
+    sound.on('close', (code) => {
+        playingSound = false;
+    });
 }
