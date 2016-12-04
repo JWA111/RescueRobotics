@@ -26,6 +26,7 @@ const dof = 95;
 
 // Number of bins
 const totalBins = Math.round(dof / dpt);
+console.log('Bins', totalBins);
 
 // Forward moving distance cm
 const forwardDistance = 10;
@@ -37,7 +38,7 @@ const clearForwardMovements = 1;
 const maxReadableDepth = 4.5;
 
 // Depth range limit for obstacle avoidance in meters
-const obstacleMaxDepth = 1;
+const obstacleMaxDepth = 1.5;
 
 // Max depth value for obstacle avoidance
 const depthLimit = Math.floor(obstacleMaxDepth * 256 / maxReadableDepth);
@@ -49,24 +50,24 @@ const ppb = 512 / totalBins;
 const maxDepth = 255;
 
 // Ignore the ceiling
-const FRAME_HEIGHT_LIMIT = Math.round(512/3);
+const FRAME_HEIGHT_LIMIT = Math.round(512*.4);
 
 // Distance to be considered blocking in meters
 const BLOCKING_DISTANCE = .25;
 
+const FORWARD_MIN_DISTANCE = .5;
+
 // Value of the blocking distance
-const BLOCKING_LIMIT = Math.round(BLOCKING_DISTANCE * 256 / maxReadableDepth);
+const BLOCKING_LIMIT = (512)*Math.round(BLOCKING_DISTANCE * 256 / maxReadableDepth)*ppb;
 
 // Forward movement minimum required distance
-const FORWARD_LIMIT = (512)*BLOCKING_LIMIT*ppb;
-console.log('forward limit', FORWARD_LIMIT);
+const FORWARD_LIMIT = (512)*Math.round(FORWARD_MIN_DISTANCE * 256 / maxReadableDepth)*ppb;
 
 // Bearing degrees, location coordinates in cm
 var objective = [5000, 0];
 
 // Global value storage
 var robotReady = false;
-var blocked = false;
 var kinected = false;
 var dataFeedReady = false;
 var imageName;
@@ -145,7 +146,7 @@ function changeTrajectory(depthFrame) {
   const df = transposeFrame(depthFrame);
   const trajectory = calcTurning(df);
   console.log('trajectory', trajectory);
-  generateImage(depthFrame, trajectory);
+  generateImage(depthFrame, trajectory.trajectory);
   const navigation = navigate(trajectory);
   console.log('Navigation:', navigation);
   var sent = false;
@@ -213,31 +214,30 @@ function calcTurning(depthFrame) {
   }
 
   // Handle dead ends
-  if (bins[trajectory] < FORWARD_LIMIT) {
-    blocked = true;
-    // If blocked, favor turning left as the right has a blind spot
-    return 12;
+  if (bins[trajectory] < BLOCKING_LIMIT) {
+    return { 'trajectory': -totalBins, 'forward': false};
   }
 
-  return trajectory - MIDDLE;
+  var forward = true;
+  if (bins[trajectory] < FORWARD_LIMIT) {
+    forward = false;
+  }
+
+  return { 'trajectory': trajectory - MIDDLE, 'forward': forward};
 }
 
 function navigate(t) {
   // TODO: Use dt to figure out how many turns are needed
-  const turns = Math.abs(t);
+  const turns = Math.abs(t.trajectory);
   var navigation = {
     'direction': undefined,
     'iterations': turns,
     'mode': 'navigation'
   };
-  if (blocked ) { // || objective[0] <= 0) {
-    if (blocked) {
-      console.log('Path is blocked');
-      blocked = false;
-    }
+  if (t.forward === false) { // || objective[0] <= 0) {
     navigation.mode = 'reorientation';
   }
-  if (t > 0) {
+  if (t.trajectory > 0) {
     objective = rotatePoint(objective, (360-turns*dpt)/57.3);
     if (navigation.mode === 'navigation') {
       objective[0] -= forwardDistance;
@@ -245,7 +245,7 @@ function navigate(t) {
     navigation.direction = 'left';
     // Slightly favor left turns to avoid right side blind spot
     navigation.iterations++;
-  } else if (t < 0) {
+  } else if (t.trajectory < 0) {
     objective = rotatePoint(objective, turns*dpt/57.3);
     if (navigation.mode === 'navigation') {
       objective[0] -= forwardDistance;
@@ -319,13 +319,16 @@ function generateImage(depthFrame, turns) {
 
 function smoothBins(bins) {
   var newBins = initBins();
-  newBins[0] = (bins[0] + bins[1])/2;
-  for (var i=1; i<totalBins-1; i++) {
-    leftAvg = (bins[i-1] + bins[i])/2;
-    rightAvg = (bins[i] + bins[i+1])/2;
+  newBins[0] = (bins[0] + bins[1] + bins[2])/3;
+  newBins[1] = ((bins[0] + bins[1])/2 + (bins[1] + bins[2] + bins[3])/3)/2;
+  for (var i=2; i<totalBins-2; i++) {
+    leftAvg = (bins[i-2] + bins[i-1] + bins[i])/3;
+    rightAvg = (bins[i] + bins[i+1] + bins[i+2])/3;
     newBins[i] = (leftAvg + rightAvg)/2;
   }
-  newBins[totalBins-1] = (bins[totalBins-2] + bins[totalBins-1])/2;
+  newBins[totalBins-2] = ((bins[totalBins-4] + bins[totalBins-3] + bins[totalBins-2])/3
+                          + (bins[totalBins-2] + bins[totalBins-1])/2)/2;
+  newBins[totalBins-1] = (bins[totalBins-3] + bins[totalBins-2] + bins[totalBins-1])/3
 
   return newBins;
 }

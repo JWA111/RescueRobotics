@@ -9,7 +9,7 @@ const IN3 = 6;
 const IN4 = 13;
 
 const forwardTime = 240;
-const turnTime = [0, 160, 200, 260, 320];
+const turnTime = [0, 200, 300, 400, 500];
 const turningLimit = 4;
 const movementDelay = 600;
 const readyDelay = 2000;
